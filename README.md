@@ -1,3 +1,4 @@
+
 # The Complete Flow in Action
 1. A user goes to /student. They are redirected to the login page.
 2. They enter stud and studPass.
