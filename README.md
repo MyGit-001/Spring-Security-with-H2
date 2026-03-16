@@ -1,3 +1,4 @@
+<img width="1736" height="1131" alt="SecurityFlow drawio" src="https://github.com/user-attachments/assets/bd6efc1d-63df-4b5d-b857-e537ae0cbda2" />
 
 # The Complete Flow in Action
 1. A user goes to /student. They are redirected to the login page.
