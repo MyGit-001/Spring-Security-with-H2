@@ -80,6 +80,30 @@ return new org.springframework.security.core.userdetails.User(user.getUsername()
         user.getPassword(),
         authorities);
 ```
+The CustomUserDetailsService is saying, "I'm done for now. You, the repository, go find me a user with this username in the database."
+
+9. JPA Constructs the Entity: The UserRepo is just an interface. Spring Data JPA steps in, automatically generates a SQL query (SELECT * FROM users WHERE username = 'stud'), and executes it. JPA uses your User class (annotated with @Entity) as the blueprint to construct a fully formed Java object from the database results.
+
+10. The Service Returns UserDetails: The UserRepo returns the User object back to your CustomUserDetailsService. The service's final job is to convert that entity into the standard UserDetails object.
+```Java
+return new org.springframework.security.core.userdetails.User(
+        user.getUsername(),
+        user.getPassword(), // The HASHED password from the DB
+        authorities);
+```
+Your CustomUserDetailsService is giving the fully constructed UserDetails object back to the DaoAuthenticationProvider. It's saying, "My job is done. Here is the official user record you asked for."11. The Provider Performs the Password Check: At this moment, the DaoAuthenticationProvider has two crucial pieces of information:The unverified token from the Filter (containing the raw password "studPass").The UserDetails object from your Service (containing the hashed password "$2a$10$wAVdG...").It now uses your PasswordEncoder to perform the final check:
+
+```Java
+// Inside the DaoAuthenticationProvider:
+boolean passwordsMatch = passwordEncoder.matches("studPass", "$2a$10$wAVdG...");
+```
+12. [NEW] Authentication Success: If the passwords match, the DaoAuthenticationProvider creates a brand new, fully verified Authentication token. It flags it as authenticated and attaches the user's roles.
+* It hands this verified token back up to the AuthenticationManager.
+* The AuthenticationManager hands it back to the UsernamePasswordAuthenticationFilter.
+* The Filter saves this verified token in the SecurityContextHolder, effectively logging the user in!
+
+
+
 This return statement is the final handoff. Your CustomUserDetailsService is giving the fully constructed UserDetails object back to the Security filter chain. 
 It's saying, "My job is done. Here is the user you asked for, complete with their username, hashed password, and roles (authorities)."
 
