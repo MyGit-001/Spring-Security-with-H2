@@ -25,10 +25,15 @@
 2. The Browser Sends the Request: When the user clicks "Log in", the browser sends an HTTP POST request to your server. The body of this request contains the form data, like username=stud&password=studPass.
 3. A Special Filter Intercepts the Request: Spring Security has a chain of filters that inspect every request. One of these is called the UsernamePasswordAuthenticationFilter. Its only job is to watch for requests coming to the /login URL.
 4. The Filter Extracts the Credentials: When the filter sees the login request, it reads the request body and extracts the String "stud" and the raw password "studPass". It then packages these two pieces of information into an unverified "token" (a UsernamePasswordAuthenticationToken).
-5. 5. [NEW] The Filter Calls the AuthenticationManager: The filter doesn't know how to verify passwords or talk to databases. Its only job is to handle the HTTP web request. So, it takes the unverified token and hands it off to the AuthenticationManager, essentially saying: "Someone is trying to log in, please verify this."
+5. [NEW] The Filter Calls the AuthenticationManager: The filter doesn't know how to verify passwords or talk to databases. Its only job is to handle the HTTP web request. So, it takes the unverified token and hands it off to the AuthenticationManager, essentially saying: "Someone is trying to log in, please verify this."
 6. [NEW] The Manager Delegates to the AuthenticationProvider: The AuthenticationManager is the orchestrator. It looks at the token and finds the right specialist to handle it. In this case, it hands the token to the DaoAuthenticationProvider.
 7. The Provider Calls Your Service: This is the crucial handoff. The DaoAuthenticationProvider, holding the string "stud", needs to find the official user record. It asks Spring for the configured UserDetailsService (which is your CustomUserDetailsService).
-8. The Filter Calls Your Service: This is the crucial step. The filter, now holding the string "stud", needs to find the user. It asks Spring for the configured UserDetailsService (which is your CustomUserDetailsService). Then, the filter itself makes the call:
+```Java
+// This is what the DaoAuthenticationProvider does internally:
+String usernameFromRequest = "stud";
+UserDetails user = yourCustomUserDetailsService.loadUserByUsername(usernameFromRequest);
+```
+9. The Filter Calls Your Service: This is the crucial step. The filter, now holding the string "stud", needs to find the user. It asks Spring for the configured UserDetailsService (which is your CustomUserDetailsService). Then, the filter itself makes the call:
 ```Java
 .userDetailsService(userDetailsService);
 ```
