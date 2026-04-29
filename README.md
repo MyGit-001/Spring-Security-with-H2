@@ -38,48 +38,6 @@ UserDetails user = yourCustomUserDetailsService.loadUserByUsername(usernameFromR
 User user = userRepo.findByUsername(username) // <-- This is the handoff
         .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 ```
-9. The Filter Calls Your Service: This is the crucial step. The filter, now holding the string "stud", needs to find the user. It asks Spring for the configured UserDetailsService (which is your CustomUserDetailsService). Then, the filter itself makes the call:
-```Java
-.userDetailsService(userDetailsService);
-```
-This line is the master instruction. You are telling the entire HttpSecurity object (represented by http): 
-"For all user-related operations, you must use the object stored in my userDetailsService variable." Spring Security now knows to call the loadUserByUsername method on your custom service.
-
-```Java
-    // This is what the UsernamePasswordAuthenticationFilter does internally:
-    String usernameFromRequest = "stud";
-    UserDetails user = yourCustomUserDetailsService.loadUserByUsername(usernameFromRequest);
-```
-
-6 .Your service now has the username (stud) but needs to get the full user details from the database. It delegates this database work to the repository.
-```Java
-User user = userRepo.findByUsername(username) // <-- This is the handoff
-        .orElseThrow(() -> new UsernameNotFoundException("User not found"));
-```
-7. The CustomUserDetailsService object is now calling the findByUsername method on the UserRepo object (userRepo) that Spring injected into it. 
-It's saying, "I'm done for now. You, the repository, go find me a user with this username in the database."
-
-The UserRepo is just an interface. You never wrote the code for findByUsername. This is where the Spring Data JPA framework steps in. 
-It sees the method name, automatically generates a SQL query (SELECT * FROM users WHERE username = 'stud'), and executes it. 
-When it gets the data back from the database, it needs to know what kind of Java object to build.
-```Java
-@Entity
-@Table(name = "users")
-public class User { // <-- This is the blueprint
-    //... fields
-}
-```
-
-JPA uses the User class, which is annotated with @Entity, as the blueprint to construct a User object from the database results. 
-This is less of a "handoff" and more of the framework using your entity as a template. The result is a fully formed User object that gets returned to the caller.
-
-8. The UserRepo has now returned the User object back to your CustomUserDetailsService. 
-The service's final job is to convert that User entity into the standard UserDetails object that Spring Security requires.
-```Java
-return new org.springframework.security.core.userdetails.User(user.getUsername(),
-        user.getPassword(),
-        authorities);
-```
 The CustomUserDetailsService is saying, "I'm done for now. You, the repository, go find me a user with this username in the database."
 
 9. JPA Constructs the Entity: The UserRepo is just an interface. Spring Data JPA steps in, automatically generates a SQL query (SELECT * FROM users WHERE username = 'stud'), and executes it. JPA uses your User class (annotated with @Entity) as the blueprint to construct a fully formed Java object from the database results.
@@ -91,7 +49,13 @@ return new org.springframework.security.core.userdetails.User(
         user.getPassword(), // The HASHED password from the DB
         authorities);
 ```
-Your CustomUserDetailsService is giving the fully constructed UserDetails object back to the DaoAuthenticationProvider. It's saying, "My job is done. Here is the official user record you asked for."11. The Provider Performs the Password Check: At this moment, the DaoAuthenticationProvider has two crucial pieces of information:The unverified token from the Filter (containing the raw password "studPass").The UserDetails object from your Service (containing the hashed password "$2a$10$wAVdG...").It now uses your PasswordEncoder to perform the final check:
+Your CustomUserDetailsService is giving the fully constructed UserDetails object back to the DaoAuthenticationProvider. It's saying, "My job is done. Here is the official user record you asked for."
+
+11. The Provider Performs the Password Check: At this moment, the DaoAuthenticationProvider has two crucial pieces of information:
+* The unverified token from the Filter (containing the raw password "studPass").
+* The UserDetails object from your Service (containing the hashed password "$2a$10$wAVdG...").
+
+It now uses your PasswordEncoder to perform the final check:
 
 ```Java
 // Inside the DaoAuthenticationProvider:
@@ -102,21 +66,3 @@ boolean passwordsMatch = passwordEncoder.matches("studPass", "$2a$10$wAVdG...");
 * The AuthenticationManager hands it back to the UsernamePasswordAuthenticationFilter.
 * The Filter saves this verified token in the SecurityContextHolder, effectively logging the user in!
 
-
-
-This return statement is the final handoff. Your CustomUserDetailsService is giving the fully constructed UserDetails object back to the Security filter chain. 
-It's saying, "My job is done. Here is the user you asked for, complete with their username, hashed password, and roles (authorities)."
-
-9. At this moment, the Spring Security Filter has two crucial pieces of information:
-  - The Plain-Text Password: The password the user actually typed into the login form (e.g., "studPass"). The filter has been holding onto this since the very beginning.
-  - The UserDetails Object: The object your loadUserByUsername method just returned. This object contains the hashed password from the database (e.g., "$2a$10$wAVdG...").
-Now, the filter hands these two things to another internal component called the AuthenticationProvider. This provider then uses your PasswordEncoder to perform the final check.
-
-```Java
-// This is what happens inside Spring Security:
-boolean passwordsMatch = passwordEncoder.matches("studPass", "$2a$10$wAVdG...");
-```
-The passwordEncoder.matches() method takes the plain-text password from the form and the hashed password from the database. 
-It then applies the BCrypt hashing algorithm to the plain-text password ("studPass") and checks if the result is identical to the hash we stored.
-
-If passwordsMatch is true, the user is authenticated. If it's false, a "Bad credentials" error is thrown.
