@@ -23,17 +23,17 @@
     </form>
 ```
 2. The Browser Sends the Request: When the user clicks "Log in", the browser sends an HTTP POST request to your server. The body of this request contains the form data, like username=stud&password=studPass.
-3. A Special Filter Intercepts the Request: Spring Security has a chain of filters that inspect every request. One of these is called the UsernamePasswordAuthenticationFilter. Its only job is to watch for requests coming to the /login URL.
+3. A Special Filter Intercepts the Request: Spring Security has a chain of filters that inspect every request. One of these is called the **`UsernamePasswordAuthenticationFilter`**. Its only job is to watch for requests coming to the /login URL.
 4. The Filter Extracts the Credentials: When the filter sees the login request, it reads the request body and extracts the String "stud" and the raw password "studPass". It then packages these two pieces of information into an unverified "token" (a UsernamePasswordAuthenticationToken).
-5. [NEW] The Filter Calls the AuthenticationManager: The filter doesn't know how to verify passwords or talk to databases. Its only job is to handle the HTTP web request. So, it takes the unverified token and hands it off to the AuthenticationManager, essentially saying: "Someone is trying to log in, please verify this."
-6. [NEW] The Manager Delegates to the AuthenticationProvider: The AuthenticationManager is the orchestrator. It looks at the token and finds the right specialist to handle it. In this case, it hands the token to the DaoAuthenticationProvider.
-7. The Provider Calls Your Service: This is the crucial handoff. The DaoAuthenticationProvider, holding the string "stud", needs to find the official user record. It asks Spring for the configured UserDetailsService (which is your CustomUserDetailsService).
+5. The Filter Calls the **`AuthenticationManager`**: The filter doesn't know how to verify passwords or talk to databases. Its only job is to handle the HTTP web request. So, it takes the unverified token and hands it off to the AuthenticationManager, essentially saying: "Someone is trying to log in, please verify this."
+6. The Manager Delegates to the **`AuthenticationProvider`**: The AuthenticationManager is the orchestrator. It looks at the token and finds the right specialist to handle it. In this case, it hands the token to the **DaoAuthenticationProvider**.
+7. The Provider Calls Your **`Service`**: This is the crucial handoff. The DaoAuthenticationProvider holding the string "stud", needs to find the official user record. It asks Spring for the configured UserDetailsService (which is your **CustomUserDetailsService**).
 ```Java
 // This is what the DaoAuthenticationProvider does internally:
 String usernameFromRequest = "stud";
 UserDetails user = yourCustomUserDetailsService.loadUserByUsername(usernameFromRequest);
 ```
-8. The Service Calls the Repository: Your service now has the username ("stud") but needs to get the full user details from the database. It delegates this database work to the repository.
+8. The Service Calls the **`Repository`**: Your service now has the username ("stud") but needs to get the full user details from the database. It delegates this database work to the repository.
 ```Java
 User user = userRepo.findByUsername(username) // <-- This is the handoff
         .orElseThrow(() -> new UsernameNotFoundException("User not found"));
@@ -55,13 +55,13 @@ Your CustomUserDetailsService is giving the fully constructed UserDetails object
 * The unverified token from the Filter (containing the raw password "studPass").
 * The UserDetails object from your Service (containing the hashed password "$2a$10$wAVdG...").
 
-It now uses your PasswordEncoder to perform the final check:
+It now uses your **`PasswordEncoder`** to perform the final check:
 
 ```Java
 // Inside the DaoAuthenticationProvider:
 boolean passwordsMatch = passwordEncoder.matches("studPass", "$2a$10$wAVdG...");
 ```
-12. [NEW] Authentication Success: If the passwords match, the DaoAuthenticationProvider creates a brand new, fully verified Authentication token. It flags it as authenticated and attaches the user's roles.
+12. Authentication Success: If the passwords match, the DaoAuthenticationProvider creates a brand new, fully verified Authentication token. It flags it as authenticated and attaches the user's roles.
 * It hands this verified token back up to the AuthenticationManager.
 * The AuthenticationManager hands it back to the UsernamePasswordAuthenticationFilter.
 * The Filter saves this verified token in the SecurityContextHolder, effectively logging the user in!
