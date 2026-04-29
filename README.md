@@ -33,6 +33,7 @@
 String usernameFromRequest = "stud";
 UserDetails user = yourCustomUserDetailsService.loadUserByUsername(usernameFromRequest);
 ```
+8. The Service Calls the Repository: Your service now has the username ("stud") but needs to get the full user details from the database. It delegates this database work to the repository.
 9. The Filter Calls Your Service: This is the crucial step. The filter, now holding the string "stud", needs to find the user. It asks Spring for the configured UserDetailsService (which is your CustomUserDetailsService). Then, the filter itself makes the call:
 ```Java
 .userDetailsService(userDetailsService);
